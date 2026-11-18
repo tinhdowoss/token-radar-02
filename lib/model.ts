@@ -102,6 +102,9 @@ export interface Radar {
   fit: Fit;
   validation: Validation;
   categories: CategoryBench[];
+  /** Every live comparable, so the dashboard's scatter plots the whole
+   *  fit — never a subset presented as the whole. */
+  liveComps: { slug: string; tvl_usd: number; mcap_usd: number }[];
   rows: BoardRow[];
 }
 
@@ -342,26 +345,36 @@ export function bootstrapRanges(
 }
 
 /** The three live comparables in the same category nearest by TVL (log
- *  distance), the peer evidence each row's value is priced off. */
+ *  distance), the peer evidence each row's value is priced off. A thin
+ *  category contributes what it has; the rest is filled from the nearest
+ *  live comparables overall, so every row shows three peers. */
 export function nearestComps(
   p: Protocol,
   comps: Protocol[],
 ): BoardRow['nearest_comps'] {
-  const same = comps.filter((c) => c.category === p.category && c.category !== null);
-  const pool = same.length > 0 ? same : comps;
-  return [...pool]
-    .sort((a, b) => {
-      const da = Math.abs(LOG(a.tvl_usd) - LOG(p.tvl_usd));
-      const db = Math.abs(LOG(b.tvl_usd) - LOG(p.tvl_usd));
-      return da - db || a.slug.localeCompare(b.slug);
-    })
-    .slice(0, 3)
-    .map((c) => ({
-      slug: c.slug,
-      name: c.name,
-      multiple: c.mcap_usd! / c.tvl_usd,
-      tvl_usd: c.tvl_usd,
-    }));
+  const byDistance = (a: Protocol, b: Protocol): number => {
+    const da = Math.abs(LOG(a.tvl_usd) - LOG(p.tvl_usd));
+    const db = Math.abs(LOG(b.tvl_usd) - LOG(p.tvl_usd));
+    return da - db || a.slug.localeCompare(b.slug);
+  };
+  const picked: Protocol[] = [];
+  const seen = new Set<string>();
+  const take = (pool: Protocol[]): void => {
+    for (const c of [...pool].sort(byDistance)) {
+      if (picked.length >= 3) return;
+      if (seen.has(c.slug)) continue;
+      seen.add(c.slug);
+      picked.push(c);
+    }
+  };
+  take(comps.filter((c) => c.category === p.category && c.category !== null));
+  take(comps);
+  return picked.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    multiple: c.mcap_usd! / c.tvl_usd,
+    tvl_usd: c.tvl_usd,
+  }));
 }
 
 // --- Farm plans: what it costs to farm, in dollars -----------------------
@@ -589,6 +602,9 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       looTested: comps.length,
     },
     categories,
+    liveComps: [...comps]
+      .sort((a, b) => a.slug.localeCompare(b.slug))
+      .map((c) => ({ slug: c.slug, tvl_usd: c.tvl_usd, mcap_usd: c.mcap_usd! })),
     rows: board,
   };
   return { board, radar };
