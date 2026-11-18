@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>make.fun launch radar — token launch radar</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="ghost" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M32 6C18 6 10 17 10 30v22c0 2 2.4 3.4 4.2 2.2L18 51l3.6 3c1.8 1.5 4.4.6 5-1.5L28 48l4 3.6 4-3.6 1.4 4.5c.6 2.1 3.2 3 5 1.5l3.6-3 3.8 3.2c1.8 1.2 4.2-.2 4.2-2.2V30C54 17 46 6 32 6Z" fill="#C41C83"/>
+      <circle cx="24" cy="29" r="4.4" fill="#fff"/><circle cx="40" cy="29" r="4.4" fill="#fff"/>
+      <circle cx="25.4" cy="30.4" r="2" fill="#11141B"/><circle cx="41.4" cy="30.4" r="2" fill="#11141B"/>
+      <path d="M27 39c1.6 1.8 8.4 1.8 10 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>make.fun launch radar</h1>
+      <p class="sub" id="formulaLine">Loading the value model…</p>
+      <p class="sub2">Value model tested out of sample vs a flat multiple. P10–P90 ranges from 200 refits.</p>
+    </div>
+  </div>
+  <button id="themeBtn" type="button" aria-label="Toggle dark theme">Dark</button>
+</header>
+
+<section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+<section class="toolbar" aria-label="Filters">
+  <input id="q" type="search" placeholder="Search protocol…" aria-label="Search protocol">
+  <select id="catSel" aria-label="Filter by category"><option value="">All categories</option></select>
+  <select id="verSel" aria-label="Filter by verdict">
+    <option value="">All verdicts</option><option>FARM</option><option>THIN</option><option>SKIP</option>
+  </select>
+  <button id="clearBtn" type="button">Clear</button>
+  <span id="countLine" class="count"></span>
+</section>
+<div id="chips" class="chips" aria-label="Active filters"></div>
+
+<section id="detail" class="detail" hidden></section>
+
+<main class="grid">
+  <section class="card board">
+    <div class="cardhead"><h2>Ranked board</h2><span id="boardNote" class="muted"></span></div>
+    <table id="boardTable">
+      <thead><tr><th>#</th><th>Protocol</th><th class="num">TVL</th><th class="num">7d</th><th>Implied value</th><th>Verdict</th></tr></thead>
+      <tbody id="boardBody"></tbody>
+    </table>
+  </section>
+
+  <aside class="side">
+    <section class="card">
+      <div class="cardhead"><h2>TVL vs market value, log–log</h2><span class="muted">live comps + fit</span></div>
+      <div id="scatter"></div>
+      <p class="cap" id="scatterCap"></p>
+    </section>
+    <section class="card oos">
+      <h2>Out-of-sample: model vs flat multiple</h2>
+      <div id="oosBody"></div>
+    </section>
+    <section class="card">
+      <h2>How a value is built</h2>
+      <ol class="steps">
+        <li><b>Fit log–log</b> on <span id="howComps"></span> live comps: log<sub>10</sub>(mcap) against log<sub>10</sub>(TVL).</li>
+        <li><b>Apply the category offset</b>, shrunk toward the global median so thin categories do not swing the value.</li>
+        <li><b>Bootstrap 200 refits</b> to get the P10–P90 range. Growth and age are <b>not</b> multiplied into the price — they made out-of-sample error worse.</li>
+      </ol>
+    </section>
+  </aside>
+</main>
+
+<footer>
+  <span id="footLine"></span>
+</footer>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
