@@ -48,16 +48,17 @@
   $('oosBody').innerHTML = '<table><thead><tr><th>Check</th><th class="num">Model</th><th class="num">Flat multiple</th></tr></thead><tbody>' +
     '<tr><td>Leave-one-out (' + val.looTested + ' comps)</td><td class="num">' + fmt3(val.looModel) + '</td><td class="num">' + fmt3(val.looFlat) + '</td></tr>' +
     '<tr><td>Walk-forward (' + val.wfTested + ' tested)</td><td class="num">' + fmt3(val.wfModel) + '</td><td class="num">' + fmt3(val.wfFlat) + '</td></tr>' +
-    '</tbody></table><p class="cap">Log\u2081\u2080 RMSE — lower is better. The model beats the flat multiple out of sample on both checks.</p>';
+    '</tbody></table><p class="cap">Log\u2081\u2080 RMSE — lower is better. Model beats flat on both checks.</p>';
 
-  /* ---- scatter: 92 distinct live comps (nearest comps in the data) + fit line + top 5 ---- */
-  var seen = {}, comps = [];
-  R.rows.forEach(function (r) {
-    (r.nearest_comps || []).forEach(function (c) {
-      if (!seen[c.slug]) { seen[c.slug] = 1; comps.push(c); }
+  /* ---- scatter: all 128 live comps + fit line + top 5 ---- */
+  var comps = (R.liveComps && R.liveComps.length) ? R.liveComps : (function () {
+    var seen2 = {}, out = [];
+    R.rows.forEach(function (r) {
+      (r.nearest_comps || []).forEach(function (c) { if (!seen2[c.slug]) { seen2[c.slug] = 1; out.push(c); } });
     });
-  });
-  var W = 480, H = 290, ML = 44, MR = 8, MT = 10, MB = 30;
+    return out;
+  })();
+  var W = 480, H = 235, ML = 44, MR = 8, MT = 10, MB = 28;
   function X(l) { return ML + (l - 6) / 4 * (W - ML - MR); }
   function Y(l) { return H - MB - (l - 6) / 4 * (H - MT - MB); }
   var ticks = [6, 7, 8, 9, 10], tlab = ['$1M', '$10M', '$100M', '$1B', '$10B'];
@@ -71,11 +72,14 @@
   svg += '<line x1="' + X(6) + '" y1="' + Y(fit.intercept + fit.slope * 6) + '" x2="' + X(10) + '" y2="' + Y(fit.intercept + fit.slope * 10) +
     '" stroke="#C41C83" stroke-width="2"/>';
   comps.forEach(function (c) {
-    var mcap = c.multiple * c.tvl_usd;
-    svg += '<circle cx="' + X(Math.log10(c.tvl_usd)).toFixed(1) + '" cy="' + Y(Math.log10(mcap)).toFixed(1) + '" r="2.6" fill="#9AA0AE"><title>' + esc(c.name) + ' — ' + money(mcap) + '</title></circle>';
+    var mcap = c.mcap_usd || (c.multiple * c.tvl_usd);
+    svg += '<circle cx="' + X(Math.log10(c.tvl_usd)).toFixed(1) + '" cy="' + Y(Math.log10(mcap)).toFixed(1) + '" r="2.6" fill="#9AA0AE"><title>' + esc(c.name || c.slug) + ' — ' + money(mcap) + '</title></circle>';
   });
-  /* Top-5 labels are staggered: Sentora + Steakhouse share (nearly) one point. */
-  var lab = { 'sentora-curator': [-8, -21, 'end'], 'steakhouse-financial': [-8, 17, 'end'], 'gauntlet': [8, -13, 'start'], 'polymarket-international': [-8, 14, 'end'], 'veda': [0, 17, 'middle'] };
+  /* Top-5 labels, one per vertical slot so none overlap a dot or each other:
+     Steakhouse above Sentora (they share one point), Sentora below it,
+     Gauntlet above-right, Polymarket below-left (clear of the fit line),
+     Veda below its dot. */
+  var lab = { 'sentora-curator': [-8, -22, 'end'], 'steakhouse-financial': [-8, -40, 'end'], 'gauntlet': [8, -14, 'start'], 'polymarket-international': [-8, 34, 'end'], 'veda': [0, 30, 'middle'] };
   R.rows.slice(0, 5).forEach(function (r) {
     var cx = X(Math.log10(r.tvl_usd)), cy = Y(Math.log10(r.implied_value_usd)), d = lab[r.slug] || [8, -8, 'start'];
     svg += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="5" fill="#C41C83" stroke="#fff" stroke-width="1.5"/>' +
@@ -83,8 +87,7 @@
   });
   svg += '</svg>';
   $('scatter').innerHTML = svg;
-  $('scatterCap').textContent = 'Grey dots: ' + comps.length + ' distinct live comps nearest to ranked rows (of ' + fit.nComps +
-    ' in the fit). Magenta: top 5 pre-token protocols at implied value. Line: log\u2081\u2080(mcap) = ' + fmt3(fit.intercept) + ' + ' + fmt3(fit.slope) + '·log\u2081\u2080(TVL).';
+  $('scatterCap').textContent = 'Grey dots: all ' + fit.nComps + ' live comps in the fit. Magenta: top 5 pre-token protocols at implied value. Line: log\u2081\u2080(mcap) = ' + fmt3(fit.intercept) + ' + ' + fmt3(fit.slope) + '·log\u2081\u2080(TVL).';
 
   /* ---- filters + board table ---- */
   readParams(); /* before building the selects, so hash/query filters show as selected */
